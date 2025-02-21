@@ -1,0 +1,51 @@
+name: Build
+on: [pull_request, push]
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: "Checkout sources"
+        uses: actions/checkout@v4
+      - name: "Install dependencies (Linux)"
+        run: sudo apt-get install meson libprotobuf-c-dev protobuf-c-compiler check
+        if: runner.os == 'Linux'
+      - name: "Install dependencies (macOS)"
+        run: brew install meson protobuf-c check
+        if: runner.os == 'macOS'
+      - name: "Install dependencies (Windows)"
+        run: |
+          choco install ninja
+          python -m pip install meson
+          meson wrap update-db
+        if: runner.os == 'Windows'
+      - name: "Configure Microsoft Visual Studio DevShell"
+        uses: bus1/cabuild/action/msdevshell@v1
+        with:
+          architecture: x64
+        if: runner.os == 'Windows'
+      - name: "Configure project"
+        run: meson setup build
+      - name: "Build project"
+        run: meson compile -C build
+      - name: "Test project"
+        run: meson test -C build
+  build-cmake:
+    name: Build on ubuntu-latest (CMake)
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout sources"
+        uses: actions/checkout@v4
+      - name: "Install dependencies"
+        run: sudo apt-get install libprotobuf-c-dev protobuf-c-compiler check
+        if: runner.os == 'Linux'
+      - name: "Configure project"
+        run: cmake -B build -DBUILD_TESTING=yes
+      - name: "Build project"
+        run: cmake --build build
+      - name: "Test project"
+        run: ctest --test-dir build
