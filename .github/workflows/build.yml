@@ -1,0 +1,82 @@
+name: Build
+on: [pull_request, push]
+jobs:
+  build:
+    name: Build on Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout sources"
+        uses: actions/checkout@v4
+      - name: "Install dependencies"
+        run: sudo apt-get install meson libprotobuf-c-dev protobuf-c-compiler check
+      - name: "Configure project"
+        run: meson setup build
+      - name: "Build project"
+        run: meson compile -C build
+      - name: "Test project"
+        run: meson test -C build --suite libomemo-c
+  build-cmake:
+    name: Build on Linux with CMake
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout sources"
+        uses: actions/checkout@v4
+      - name: "Install dependencies"
+        run: sudo apt-get install libprotobuf-c-dev protobuf-c-compiler check
+      - name: "Configure project"
+        run: cmake -B build -DBUILD_TESTING=yes
+      - name: "Build project"
+        run: cmake --build build
+      - name: "Test project"
+        run: ctest --test-dir build
+  build-wraps:
+    name: Build on Linux with wraps
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout sources"
+        uses: actions/checkout@v4
+      - name: "Install dependencies"
+        run: |
+          sudo apt-get install meson
+          meson wrap update-db
+      - name: "Configure project"
+        run: meson setup build
+      - name: "Build project"
+        run: meson compile -C build
+      - name: "Test project"
+        run: meson test -C build --suite libomemo-c
+  build-macos:
+    name: Build on macOS
+    runs-on: macos-latest
+    steps:
+      - name: "Checkout sources"
+        uses: actions/checkout@v4
+      - name: "Install dependencies"
+        run: brew install meson protobuf-c check
+      - name: "Configure project"
+        run: meson setup build
+      - name: "Build project"
+        run: meson compile -C build
+      - name: "Test project"
+        run: meson test -C build --suite libomemo-c
+  build-windows:
+    name: Build on Windows with wraps
+    runs-on: windows-latest
+    steps:
+      - name: "Checkout sources"
+        uses: actions/checkout@v4
+      - name: "Install dependencies"
+        run: |
+          choco install ninja
+          python -m pip install meson
+          meson wrap update-db
+      - name: "Configure Microsoft Visual Studio DevShell"
+        uses: bus1/cabuild/action/msdevshell@v1
+        with:
+          architecture: x64
+      - name: "Configure project"
+        run: meson setup build
+      - name: "Build project"
+        run: meson compile -C build
+      - name: "Test project"
+        run: meson test -C build --suite libomemo-c
