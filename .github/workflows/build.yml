@@ -1,0 +1,28 @@
+name: Build
+on: [pull_request, push]
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: "Checkout sources"
+        uses: actions/checkout@v4
+      - name: "Install dependencies (Linux)"
+        run: apt install libprotobuf-c-dev protobuf-c-compiler
+        if: runner.os == 'Linux'
+      - name: "Install dependencies (macOS)"
+        run: brew install protobuf-c
+        if: runner.os == 'macOS'
+      - name: "Install dependencies (Windows)"
+        run: choco install protoc
+        if: runner.os == 'Windows'
+      - name: "Configure project"
+        run: cmake -B build
+      - name: "Build project"
+        run: cmake --build build
+      - name: "Test project"
+        run: ctest --test-dir build

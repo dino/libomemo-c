@@ -6,6 +6,8 @@ build/
 *.a
 
 # IDE-related files
+.idea/
+cmake-build-*/
 
 # OS generated files
 .DS_Store*
@@ -13,10 +15,8 @@ Thumbs.db
 
 # Other
 *~
-.*
 *.swp
 core
 *.log
 *.zip
-/compile_commands.json
-
+compile_commands.json
