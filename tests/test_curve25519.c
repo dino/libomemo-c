@@ -4,7 +4,6 @@
 #include <check.h>
 
 #include "../src/signal_protocol.h"
-#include "../src/signal_protocol_internal.h"
 #include "curve.h"
 #include "test_common.h"
 
@@ -382,7 +381,7 @@ START_TEST(test_unique_signatures)
     ck_assert_ptr_ne(message, 0);
 
     for(i = 1; i <= 256; i++) {
-        result = signal_crypto_random(global_context, message, i);
+        result = test_random_generator(message, i, NULL);
         ck_assert_int_eq(result, 0);
 
         result = curve_calculate_vrf_signature(global_context, &signature,
@@ -401,7 +400,7 @@ START_TEST(test_unique_signatures)
 
         signal_buffer_free(vrf_output);
 
-        result = signal_crypto_random(global_context, (uint8_t *)&r, sizeof(size_t));
+        result = test_random_generator((uint8_t *)&r, sizeof(size_t), NULL);
         ck_assert_int_eq(result, 0);
 
         message[r % i] ^= 0x01;
@@ -491,7 +490,7 @@ START_TEST(test_ed25519_verify_from_xed25519_sig)
 
     pubkey_buffer = ec_public_key_get_ed(ec_key_pair_get_public(keys));
 
-    result = curve_decode_point(&pubkey, pubkey_buffer->data, pubkey_buffer->len, global_context);
+    result = curve_decode_point(&pubkey, signal_buffer_data(pubkey_buffer), signal_buffer_len(pubkey_buffer), global_context);
     ck_assert_int_eq(result, 0);
 
     uint8_t message[1000];
@@ -531,7 +530,7 @@ START_TEST(test_curve_to_ed_to_curve)
     ck_assert_int_eq(result, 0);
 
     edpub_buffer = ec_public_key_get_ed(alice_public_key);
-    result = curve_decode_point(&alice_public_key_2, edpub_buffer->data, edpub_buffer->len, global_context);
+    result = curve_decode_point(&alice_public_key_2, signal_buffer_data(edpub_buffer), signal_buffer_len(edpub_buffer), global_context);
     ck_assert_int_eq(result, 0);
 
     montpub_buffer = ec_public_key_get_mont(alice_public_key);
