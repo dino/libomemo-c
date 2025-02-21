@@ -1,11 +1,12 @@
 # Compiled source
-build/
+/*build*/
 *.o
 *.so
 *.so.*
 *.a
 
 # IDE-related files
+.idea/
 
 # OS generated files
 .DS_Store*
@@ -13,7 +14,6 @@ Thumbs.db
 
 # Other
 *~
-.*
 *.swp
 core
 *.log

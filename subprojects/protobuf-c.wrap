@@ -1,0 +1,11 @@
+[wrap-file]
+directory = protobuf-c-1.5.1
+source_url = https://github.com/protobuf-c/protobuf-c/releases/download/v1.5.1/protobuf-c-1.5.1.tar.gz
+source_filename = protobuf-c-1.5.1.tar.gz
+source_hash = 20d1dc257da96f8ddff8be4dd9779215bbd0a6069ed53bbe9de38fa7629be06b
+patch_directory = protobuf-c
+
+[provide]
+libprotobuf-c = libprotobuf_c_dep
+protoc-gen-c = protoc_gen_c_dep
+program_names = protoc-gen-c
