@@ -33,12 +33,12 @@ endif()
 
 set(LIBS ${LIBS}
 	${M_LIB}
-	${PBC_LIB}
 	${CHECK_LDFLAGS}
 	${OPENSSL_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT}
 	${CMAKE_DL_LIBS}
 	omemo-c
+	${PBC_LIB}
 )
 
 set(common_SRCS
