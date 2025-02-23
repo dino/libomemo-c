@@ -28,7 +28,7 @@ include(TestBigEndian)
 CHECK_SYMBOL_EXISTS(memset_s "string.h" HAVE_MEMSET_S)
 
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-	CHECK_SYMBOL_EXISTS(SecureZeroMemory "Windows.h;WinBase.h" HAVE_SECUREZEROMEMORY)
+	CHECK_SYMBOL_EXISTS(SecureZeroMemory "Windows.h" HAVE_SECUREZEROMEMORY)
 endif(CMAKE_SYSTEM_NAME MATCHES "Windows")
 
 if(BUILD_TESTING)
