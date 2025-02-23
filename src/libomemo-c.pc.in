@@ -6,7 +6,7 @@ includedir=@OMEMO_C_PKGCONFIG_INCLUDEDIR@
 
 Name: @PROJECT_NAME@
 Description: OMEMO C Library
-Version: @SIGNAL_PROTOCOL_C_VERSION@
+Version: @OMEMO_C_VERSION@
 
 Requires:
 Libs: -L${libdir} -L${sharedlibdir} -l@PROJECT_NAME@ -lprotobuf-c
