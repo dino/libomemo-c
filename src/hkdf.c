@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <assert.h>
 
 #include "signal_protocol_internal.h"
@@ -106,7 +105,8 @@ ssize_t hkdf_expand(hkdf_context *context,
         const uint8_t *info, size_t info_len,
         size_t output_len)
 {
-    int iterations = (int)ceil((double)output_len / (double)HASH_OUTPUT_SIZE);
+    int iterations = (int)output_len / HASH_OUTPUT_SIZE;
+    if (output_len % HASH_OUTPUT_SIZE > 0) iterations++;
     size_t remaining_len = output_len;
     signal_buffer *step_buffer = 0;
     size_t step_size = 0;
