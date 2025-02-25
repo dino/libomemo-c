@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <check.h>
-#include <pthread.h>
+#include <time.h>
 
 #include "../src/signal_protocol.h"
 #include "session_record.h"
@@ -13,26 +13,12 @@
 #include "test_common.h"
 
 signal_context *global_context;
-pthread_mutex_t global_mutex;
-pthread_mutexattr_t global_mutex_attr;
-
-void test_lock(void *user_data)
-{
-    pthread_mutex_lock(&global_mutex);
-}
-
-void test_unlock(void *user_data)
-{
-    pthread_mutex_unlock(&global_mutex);
-}
 
 void test_setup()
 {
     int result;
 
-    pthread_mutexattr_init(&global_mutex_attr);
-    pthread_mutexattr_settype(&global_mutex_attr, PTHREAD_MUTEX_RECURSIVE);
-    pthread_mutex_init(&global_mutex, &global_mutex_attr);
+    test_global_mutex_setup();
 
     result = signal_context_create(&global_context, 0);
     ck_assert_int_eq(result, 0);
@@ -40,7 +26,7 @@ void test_setup()
 
     setup_test_crypto_provider(global_context);
 
-    result = signal_context_set_locking_functions(global_context, test_lock, test_unlock);
+    result = signal_context_set_locking_functions(global_context, test_global_mutex_lock, test_global_mutex_unlock);
     ck_assert_int_eq(result, 0);
 }
 
@@ -48,8 +34,7 @@ void test_teardown()
 {
     signal_context_destroy(global_context);
 
-    pthread_mutex_destroy(&global_mutex);
-    pthread_mutexattr_destroy(&global_mutex_attr);
+    test_global_mutex_teardown();
 }
 
 void initialize_sessions_v3(session_state *alice_state, session_state *bob_state);

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <check.h>
-#include <pthread.h>
+#include <time.h>
 
 #include "../src/signal_protocol.h"
 #include "session_record.h"
@@ -23,29 +23,15 @@ static signal_protocol_address bob_address = {
 };
 
 signal_context *global_context;
-pthread_mutex_t global_mutex;
-pthread_mutexattr_t global_mutex_attr;
 
 void run_interaction(signal_protocol_store_context *alice_store, signal_protocol_store_context *bob_store, uint32_t version);
 int test_basic_pre_key_v3_decrypt_callback(session_cipher *cipher, signal_buffer *plaintext, void *decrypt_context);
 
-void test_lock(void *user_data)
-{
-    pthread_mutex_lock(&global_mutex);
-}
-
-void test_unlock(void *user_data)
-{
-    pthread_mutex_unlock(&global_mutex);
-}
 
 void test_setup()
 {
     int result;
-
-    pthread_mutexattr_init(&global_mutex_attr);
-    pthread_mutexattr_settype(&global_mutex_attr, PTHREAD_MUTEX_RECURSIVE);
-    pthread_mutex_init(&global_mutex, &global_mutex_attr);
+    test_global_mutex_setup();
 
     result = signal_context_create(&global_context, 0);
     ck_assert_int_eq(result, 0);
@@ -53,7 +39,7 @@ void test_setup()
 
     setup_test_crypto_provider(global_context);
 
-    result = signal_context_set_locking_functions(global_context, test_lock, test_unlock);
+    result = signal_context_set_locking_functions(global_context, test_global_mutex_lock, test_global_mutex_unlock);
     ck_assert_int_eq(result, 0);
 }
 
@@ -61,8 +47,7 @@ void test_teardown()
 {
     signal_context_destroy(global_context);
 
-    pthread_mutex_destroy(&global_mutex);
-    pthread_mutexattr_destroy(&global_mutex_attr);
+    test_global_mutex_teardown();
 }
 
 START_TEST(test_basic_pre_key_v2)
@@ -221,7 +206,7 @@ START_TEST(test_basic_pre_key_v3)
     loaded_record_state = 0;
 
     /* Encrypt an outgoing message to send to Bob */
-    static const char original_message[] = "L'homme est condamné à être libre";
+    static const char original_message[] = "L'homme est condamnï¿½ ï¿½ ï¿½tre libre";
     size_t original_message_len = sizeof(original_message) - 1;
     session_cipher *alice_session_cipher = 0;
     result = session_cipher_create(&alice_session_cipher, alice_store, &bob_address, global_context);
@@ -603,7 +588,7 @@ START_TEST(test_basic_pre_key_omemo)
     loaded_record_state = 0;
 
     /* Encrypt an outgoing message to send to Bob */
-    static const char original_message[] = "L'homme est condamné à être libre";
+    static const char original_message[] = "L'homme est condamnï¿½ ï¿½ ï¿½tre libre";
     size_t original_message_len = sizeof(original_message) - 1;
     session_cipher *alice_session_cipher = 0;
     result = session_cipher_create(&alice_session_cipher, alice_store, &bob_address, global_context);
@@ -1246,7 +1231,7 @@ START_TEST(test_repeat_bundle_message_v3)
     ck_assert_int_eq(result, 0);
 
     /* Initialize Alice's session cipher */
-    static const char original_message[] = "L'homme est condamné à être libre";
+    static const char original_message[] = "L'homme est condamnï¿½ ï¿½ ï¿½tre libre";
     size_t original_message_len = sizeof(original_message) - 1;
     session_cipher *alice_session_cipher = 0;
     result = session_cipher_create(&alice_session_cipher, alice_store, &bob_address, global_context);
@@ -1466,7 +1451,7 @@ START_TEST(test_bad_message_bundle)
     ck_assert_int_eq(result, 0);
 
     /* Encrypt an outgoing message to send to Bob */
-    static const char original_message[] = "L'homme est condamné à être libre";
+    static const char original_message[] = "L'homme est condamnï¿½ ï¿½ ï¿½tre libre";
     size_t original_message_len = sizeof(original_message) - 1;
     session_cipher *alice_session_cipher = 0;
     result = session_cipher_create(&alice_session_cipher, alice_store, &bob_address, global_context);
@@ -1634,7 +1619,7 @@ START_TEST(test_optional_one_time_pre_key)
     ck_assert_int_eq(session_state_get_session_version(state), 3);
     SIGNAL_UNREF(record);
 
-    static const char original_message[] = "L'homme est condamné à être libre";
+    static const char original_message[] = "L'homme est condamnï¿½ ï¿½ ï¿½tre libre";
     size_t original_message_len = sizeof(original_message) - 1;
 
     /* Create Alice's session cipher */

@@ -43,6 +43,7 @@ set(LIBS ${LIBS}
 
 set(common_SRCS
 	test_common.c
+	test_common_pthread.c
 	test_common.h
 )
 

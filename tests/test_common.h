@@ -90,4 +90,9 @@ void setup_test_sender_key_store(signal_protocol_store_context *context, signal_
 void srand_deterministic(unsigned int seed);
 #endif
 
+void test_global_mutex_lock(void *user_data);
+void test_global_mutex_unlock(void *user_data);
+void test_global_mutex_setup();
+void test_global_mutex_teardown();
+
 #endif /* TEST_COMMON_H */
