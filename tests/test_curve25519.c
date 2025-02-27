@@ -334,26 +334,27 @@ START_TEST(test_curve25519_large_signatures)
     result = curve_generate_key_pair(global_context, &keys);
     ck_assert_int_eq(result, 0);
 
-    uint8_t message[1048576];
-    memset(message, 0, sizeof(message));
+    const int message_len = 1048576;
+    uint8_t *message = malloc(message_len);
+    memset(message, 0, message_len);
 
     signal_buffer *signature = 0;
 
     result = curve_calculate_signature(global_context, &signature,
-            ec_key_pair_get_private(keys), message, sizeof(message));
+            ec_key_pair_get_private(keys), message, message_len);
     ck_assert_int_eq(result, 0);
 
     uint8_t *data = signal_buffer_data(signature);
     size_t len = signal_buffer_len(signature);
 
     result = curve_verify_signature(ec_key_pair_get_public(keys),
-            message, sizeof(message), data, len);
+            message, message_len, data, len);
     ck_assert_int_eq(result, 1);
 
     data[0] ^= 0x01;
 
     result = curve_verify_signature(ec_key_pair_get_public(keys),
-            message, sizeof(message), data, len);
+            message, message_len, data, len);
     ck_assert_int_eq(result, 0);
 
     /* Cleanup */
@@ -361,6 +362,7 @@ START_TEST(test_curve25519_large_signatures)
     if(signature) {
         signal_buffer_free(signature);
     }
+    free(message);
 }
 END_TEST
 
