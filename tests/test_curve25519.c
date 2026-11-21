@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include <check.h>
 
 #include "../src/signal_protocol.h"
@@ -549,6 +550,65 @@ START_TEST(test_curve_to_ed_to_curve)
 }
 END_TEST
 
+START_TEST(test_ed_decoded_key_in_curve_form)
+{
+    int result;
+
+    ec_key_pair *alice_key_pair = 0;
+    ec_key_pair *bob_key_pair = 0;
+    ec_public_key *alice_public_key = 0;
+    signal_buffer *edpub_buffer = 0;
+    ec_public_key *alice_ed_public_key = 0;
+    signal_buffer *serialized = 0;
+    signal_buffer *serialized_ed = 0;
+    uint8_t *shared = 0;
+    uint8_t *shared_ed = 0;
+
+    result = curve_generate_key_pair(global_context, &alice_key_pair);
+    ck_assert_int_eq(result, 0);
+    result = curve_generate_key_pair(global_context, &bob_key_pair);
+    ck_assert_int_eq(result, 0);
+    alice_public_key = ec_key_pair_get_public(alice_key_pair);
+
+    edpub_buffer = ec_public_key_get_ed(alice_public_key);
+
+    /* Comparison */
+    result = curve_decode_point(&alice_ed_public_key, signal_buffer_data(edpub_buffer), signal_buffer_len(edpub_buffer), global_context);
+    ck_assert_int_eq(result, 0);
+    ck_assert_int_eq(ec_public_key_compare(alice_ed_public_key, alice_public_key), 0);
+    ck_assert_int_eq(ec_public_key_memcmp(alice_public_key, alice_ed_public_key), 0);
+    SIGNAL_UNREF(alice_ed_public_key);
+
+    /* Serialization */
+    result = curve_decode_point(&alice_ed_public_key, signal_buffer_data(edpub_buffer), signal_buffer_len(edpub_buffer), global_context);
+    ck_assert_int_eq(result, 0);
+    result = ec_public_key_serialize(&serialized, alice_public_key);
+    ck_assert_int_eq(result, 0);
+    result = ec_public_key_serialize(&serialized_ed, alice_ed_public_key);
+    ck_assert_int_eq(result, 0);
+    ck_assert_int_eq(signal_buffer_compare(serialized, serialized_ed), 0);
+    SIGNAL_UNREF(alice_ed_public_key);
+
+    /* Agreement */
+    result = curve_decode_point(&alice_ed_public_key, signal_buffer_data(edpub_buffer), signal_buffer_len(edpub_buffer), global_context);
+    ck_assert_int_eq(result, 0);
+    result = curve_calculate_agreement(&shared, alice_public_key, ec_key_pair_get_private(bob_key_pair));
+    ck_assert_int_eq(result, 32);
+    result = curve_calculate_agreement(&shared_ed, alice_ed_public_key, ec_key_pair_get_private(bob_key_pair));
+    ck_assert_int_eq(result, 32);
+    ck_assert_int_eq(memcmp(shared, shared_ed, 32), 0);
+
+    SIGNAL_UNREF(alice_ed_public_key);
+    SIGNAL_UNREF(alice_key_pair);
+    SIGNAL_UNREF(bob_key_pair);
+    signal_buffer_free(edpub_buffer);
+    signal_buffer_free(serialized);
+    signal_buffer_free(serialized_ed);
+    free(shared);
+    free(shared_ed);
+}
+END_TEST
+
 Suite *curve25519_suite(void)
 {
     Suite *suite = suite_create("curve25519");
@@ -564,6 +624,7 @@ Suite *curve25519_suite(void)
     tcase_add_test(tcase, test_unique_signature_vector);
     tcase_add_test(tcase, test_curve_to_ed_to_curve);
     tcase_add_test(tcase, test_ed25519_verify_from_xed25519_sig);
+    tcase_add_test(tcase, test_ed_decoded_key_in_curve_form);
     suite_add_tcase(suite, tcase);
     return suite;
 }

@@ -22,6 +22,7 @@
 struct ec_public_key
 {
     signal_type_base base;
+    uint8_t has_mont;
     uint8_t data[DJB_KEY_LEN];
     uint8_t has_ed;
     uint8_t ed_data[DJB_KEY_LEN];
@@ -44,6 +45,25 @@ struct ec_public_key_list
 {
     UT_array *values;
 };
+
+/*
+ * Returns the curve25519 form of the key. Keys decoded from their ed25519 form
+ * are only converted when needed because the conversion is expensive and many
+ * keys, e.g. the identity keys of loaded session states, are never used in
+ * their curve25519 form.
+ */
+static const uint8_t *ec_public_key_get_mont_data(const ec_public_key *key)
+{
+    if(!key->has_mont) {
+        ec_public_key *mutable_key = (ec_public_key *)key;
+        fe y, u;
+        fe_frombytes(y, key->ed_data);
+        fe_edy_to_montx(u, y);
+        fe_tobytes(mutable_key->data, u);
+        mutable_key->has_mont = 1;
+    }
+    return key->data;
+}
 
 int curve_internal_fast_tests(int silent)
 {
@@ -85,11 +105,8 @@ int curve_decode_point_ed(ec_public_key **public_key, const uint8_t *key_data, s
     SIGNAL_INIT(key, ec_public_key_destroy);
 
     memcpy(key->ed_data, key_data, DJB_KEY_LEN);
-    fe y, u;
-    fe_frombytes(y, key->ed_data);
-    fe_edy_to_montx(u, y);
-    fe_tobytes(key->data, u);
     key->has_ed = 1;
+    key->has_mont = 0;
 
     *public_key = key;
 
@@ -124,6 +141,7 @@ int curve_decode_point_mont(ec_public_key **public_key, const uint8_t *key_data,
     } else {
         memcpy(key->data, key_data, DJB_KEY_LEN);
     }
+    key->has_mont = 1;
     key->has_ed = 0;
 
     *public_key = key;
@@ -140,7 +158,7 @@ signal_buffer* ec_public_key_get_ed(const ec_public_key *key) {
         memcpy(buf->data, key->ed_data, DJB_KEY_LEN);
     } else {
         fe y, u;
-        fe_frombytes(u, key->data);
+        fe_frombytes(u, ec_public_key_get_mont_data(key));
         fe_montx_to_edy(y, u);
         fe_tobytes(buf->data, y);
     }
@@ -152,7 +170,7 @@ signal_buffer* ec_public_key_get_mont(const ec_public_key *key) {
     buf = signal_buffer_alloc(sizeof(uint8_t) * (DJB_KEY_LEN));
     if (!buf) return 0;
 
-    memcpy(buf->data, key->data, DJB_KEY_LEN);
+    memcpy(buf->data, ec_public_key_get_mont_data(key), DJB_KEY_LEN);
     return buf;
 }
 
@@ -168,7 +186,7 @@ int ec_public_key_compare(const ec_public_key *key1, const ec_public_key *key2)
         return 1;
     }
     else {
-        return signal_constant_memcmp(key1->data, key2->data, DJB_KEY_LEN);
+        return signal_constant_memcmp(ec_public_key_get_mont_data(key1), ec_public_key_get_mont_data(key2), DJB_KEY_LEN);
     }
 }
 
@@ -184,7 +202,7 @@ int ec_public_key_memcmp(const ec_public_key *key1, const ec_public_key *key2)
         return 1;
     }
     else {
-        return memcmp(key1->data, key2->data, DJB_KEY_LEN);
+        return memcmp(ec_public_key_get_mont_data(key1), ec_public_key_get_mont_data(key2), DJB_KEY_LEN);
     }
 }
 
@@ -204,7 +222,7 @@ int ec_public_key_serialize(signal_buffer **buffer, const ec_public_key *key)
 
     data = signal_buffer_data(buf);
     data[0] = DJB_TYPE;
-    memcpy(data + 1, key->data, DJB_KEY_LEN);
+    memcpy(data + 1, ec_public_key_get_mont_data(key), DJB_KEY_LEN);
 
     *buffer = buf;
 
@@ -244,7 +262,7 @@ int ec_public_key_serialize_protobuf(ProtobufCBinaryData *buffer, const ec_publi
     }
 
     data[0] = DJB_TYPE;
-    memcpy(data + 1, key->data, DJB_KEY_LEN);
+    memcpy(data + 1, ec_public_key_get_mont_data(key), DJB_KEY_LEN);
 
     buffer->data = data;
     buffer->len = len;
@@ -265,7 +283,7 @@ int ec_public_key_serialize_protobuf_mont(ProtobufCBinaryData *buffer, const ec_
         return SG_ERR_NOMEM;
     }
 
-    memcpy(data, key->data, DJB_KEY_LEN);
+    memcpy(data, ec_public_key_get_mont_data(key), DJB_KEY_LEN);
 
     buffer->data = data;
     buffer->len = len;
@@ -290,7 +308,7 @@ int ec_public_key_serialize_protobuf_ed(ProtobufCBinaryData *buffer, const ec_pu
         memcpy(data, key->ed_data, DJB_KEY_LEN);
     } else {
         fe y, u;
-        fe_frombytes(u, key->data);
+        fe_frombytes(u, ec_public_key_get_mont_data(key));
         fe_montx_to_edy(y, u);
         fe_tobytes(data, y);
     }
@@ -477,6 +495,7 @@ int curve_generate_public_key(ec_public_key **public_key, const ec_private_key *
     SIGNAL_INIT(key, ec_public_key_destroy);
 
     result = curve25519_donna(key->data, private_key->data, basepoint);
+    key->has_mont = 1;
     key->has_ed = 0;
 
     if(result == 0) {
@@ -674,7 +693,7 @@ int curve_calculate_agreement(uint8_t **shared_key_data, const ec_public_key *pu
         return SG_ERR_NOMEM;
     }
 
-    result = curve25519_donna(key, private_key->data, public_key->data);
+    result = curve25519_donna(key, private_key->data, ec_public_key_get_mont_data(public_key));
 
     if(result == 0) {
         *shared_key_data = key;
@@ -699,7 +718,7 @@ int curve_verify_signature(const ec_public_key *signing_key,
     if((signature_data[63] & 0x80) == 0 && signing_key->has_ed) {
         return ed25519_verify(signature_data, signing_key->ed_data, message_data, message_len) == 0;
     }
-    return curve25519_verify(signature_data, signing_key->data, message_data, message_len) == 0;
+    return curve25519_verify(signature_data, ec_public_key_get_mont_data(signing_key), message_data, message_len) == 0;
 }
 
 int curve_calculate_signature(signal_context *context,
@@ -761,7 +780,7 @@ int curve_verify_vrf_signature(signal_context *context,
     }
 
     result = generalized_xveddsa_25519_verify(signal_buffer_data(buffer),
-            signature_data, signing_key->data,
+            signature_data, ec_public_key_get_mont_data(signing_key),
             message_data, message_len, NULL, 0);
     if(result != 0) {
         signal_log(context, SG_LOG_ERROR, "Invalid signature");
